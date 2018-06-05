@@ -14,6 +14,9 @@ import Time exposing (Time)
 type alias Entity =
     { x : Float
     , y : Float
+    , acceleration : Float
+    , maxVelocity : Float
+    , velocity : Float
     , direction : Direction
     }
 
@@ -40,7 +43,7 @@ init : Flags -> ( Model, Cmd Msg )
 init flags =
     ( { charactersPath = flags.charactersPath
       , elapsedTime = 0
-      , mario = { x = 0, y = 0, direction = Left }
+      , mario = { x = 0, y = 0, maxVelocity = 1,  velocity = 0, acceleration = 0, direction = Left }
       , keyPressed = "Nothing pressed"
       }
     , Cmd.none
@@ -65,13 +68,13 @@ update msg model =
                 updatedModel =
                     { model | elapsedTime = model.elapsedTime + (dt / 1000) }
             in
-                ( { updatedModel | mario = moveMario dt model.keyPressed model.mario }, Cmd.none )
+                ( { updatedModel | mario = moveMario dt model.mario }, Cmd.none )
 
         KeyDown keyCode ->
-            ( { model | keyPressed = toString keyCode }, Cmd.none )
+            ( { model | keyPressed = toString keyCode, mario = handleInput model.keyPressed model.mario }, Cmd.none )
 
         KeyUp keyCode ->
-            ( { model | keyPressed = "Nothing pressed" }, Cmd.none )
+            ( { model | keyPressed = "Nothing pressed", mario = handleInput model.keyPressed model.mario }, Cmd.none )
 
 
 
@@ -94,9 +97,8 @@ view model =
                 [ drawMario model.mario model.charactersPath ]
             ]
 
-
-moveMario : Time -> String -> Entity -> Entity
-moveMario dt keyPressed mario =
+handleInput : String -> Entity -> Entity
+handleInput keyPressed mario =
     let
         leftArrow =
             "37"
@@ -105,11 +107,15 @@ moveMario dt keyPressed mario =
             "39"
     in
         if keyPressed == leftArrow then
-            { mario | x = mario.x - dt / 10, direction = Left }
+                { mario | acceleration = mario.acceleration - 0.00001, direction = Left }
         else if keyPressed == rightArrow then
-            { mario | x = mario.x + dt / 10, direction = Right }
+                { mario | acceleration = mario.acceleration + 0.00001, direction = Right }
         else
-            mario
+                mario
+
+moveMario : Time -> Entity -> Entity
+moveMario dt mario =
+        { mario | x = mario.x + (mario.velocity * dt), velocity = (mario.velocity + (mario.acceleration * dt)), acceleration = mario.acceleration * 0.9 }
 
 
 drawMario : Entity -> String -> Svg Msg
@@ -136,7 +142,7 @@ drawMario mario spritesPath =
                     marioRightSprite
     in
         svg [ x (toString mario.x), y (toString mario.y), width "16px", height "16px", viewBox spritePosition, version "1.1" ]
-            [ image [ x "0px", y "0px", width "513px", height "401px", xlinkHref spritesPath ] []
+            [ image [ x "0px", y "0px", width "513px", height "401px", xlinkHref spritesPath, imageRendering "pixelated" ] []
             ]
 
 
